@@ -1,50 +1,10 @@
-# Lab 8 — Report
-
-Paste your checkpoint evidence below. Add screenshots as image files in the repo and reference them with `![description](path)`.
+# Lab 08 Report
 
 ## Task 1A — Bare agent
+```text
+[PASTE YOUR TERMINAL OUTPUT HERE: The response the agent gave you when you asked about the labs BEFORE it had access to the LMS backend tools.]
 
-<!-- Paste the agent's response to "What is the agentic loop?" and "What labs are available in our LMS?" -->
+[PASTE YOUR TERMINAL OUTPUT HERE: The response where the agent successfully read the backend and printed out the list of Lab 1 through Lab 8.]
 
-## Task 1B — Agent with LMS tools
+[PASTE YOUR TERMINAL OUTPUT HERE: The response showing the agent using the specific skill prompt you configured for this task.]
 
-<!-- Paste the agent's response to "What labs are available?" and "Describe the architecture of the LMS system" -->
-
-## Task 1C — Skill prompt
-
-<!-- Paste the agent's response to "Show me the scores" (without specifying a lab) -->
-
-## Task 2A — Deployed agent
-
-<!-- Paste a short nanobot startup log excerpt showing the gateway started inside Docker -->
-
-## Task 2B — Web client
-
-<!-- Screenshot of a conversation with the agent in the Flutter web app -->
-
-## Task 3A — Structured logging
-
-<!-- Paste happy-path and error-path log excerpts, VictoriaLogs query screenshot -->
-
-## Task 3B — Traces
-
-<!-- Screenshots: healthy trace span hierarchy, error trace -->
-
-## Task 3C — Observability MCP tools
-
-<!-- Paste agent responses to "any errors in the last hour?" under normal and failure conditions -->
-
-## Task 4A — Multi-step investigation
-
-<!-- Paste the agent's response to "What went wrong?" showing chained log + trace investigation -->
-
-## Task 4B — Proactive health check
-
-<!-- Screenshot or transcript of the proactive health report that appears in the Flutter chat -->
-
-## Task 4C — Bug fix and recovery
-
-<!-- 1. Root cause identified
-     2. Code fix (diff or description)
-     3. Post-fix response to "What went wrong?" showing the real underlying failure
-     4. Healthy follow-up report or transcript after recovery -->
