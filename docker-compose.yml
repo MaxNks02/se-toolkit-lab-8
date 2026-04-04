@@ -137,9 +137,9 @@ services:
       - backend
       - client-web-react
         # Task 2B — uncomment after you enable the Flutter build service above.
-         - client-web-flutter
+      - client-web-flutter
         #Task 2A — uncomment after you enable the nanobot service above.
-        - nanobot
+      - nanobot
       - qwen-code-api
       - victorialogs
       - victoriatraces
