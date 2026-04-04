@@ -1,5 +1,6 @@
 ## Task 1A — Bare agent:
-[Your saved output from the bare agent before you added the MCP tools]
+🐈 nanobot
+I do not have access to the LMS database or tools to check which labs are available. You would need to check the LMS dashboard directly.
 
 ## Task 1B — Agent with LMS tools:
 🐈 nanobot
