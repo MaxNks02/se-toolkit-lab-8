@@ -172,3 +172,76 @@ Agent response under failure conditions (PostgreSQL stopped, fresh errors trigge
 >
 > All errors are related to database connectivity on the item table.
 > Would you like me to investigate any of these traces further?
+
+## Task 4A — Multi-step investigation
+
+With PostgreSQL stopped, asked the agent: **"What went wrong?"**
+
+The agent chained logs and traces in a single investigation:
+
+> Found 5 errors in the last hour, all from the Learning Management Service. The most recent error (at 15:12:38 UTC) is a DNS resolution failure during a database query on the item table.
+>
+> **Trace ID:** 77d153cc74c8703439355ac5062f1820
+>
+> | Span | Operation | Duration | Error |
+> |------|-----------|----------|-------|
+> | b11aeee938b56c27 | connect | 339.1ms | gaierror: [Errno -2] Name or service not known |
+> | 785eb1869d5c200b | GET /items/ | 348.2ms | logged error but returned |
+>
+> **Root Cause:** The service cannot resolve the database hostname — DNS resolution failure.
+> The same error has been recurring since 14:40 UTC. The earlier error was a connection is closed error from asyncpg.
+
+## Task 4B — Proactive health check
+
+Created a cron health check from the Flutter chat:
+
+> User: Create a health check for this chat that runs every 2 minutes...
+> Agent: Done! The health check is scheduled to run every 2 minutes (job ID: d044d20a).
+
+Agent listed the scheduled job:
+
+> | Job | ID | Schedule | Next Run |
+> |-----|-----|----------|----------|
+> | Run a health check | d044d20a | Every 2 minutes | 2026-04-06 15:16 UTC |
+
+Initial health check proactive report (with PostgreSQL still stopped):
+
+> 2 errors detected in the last 2 minutes
+> Service: Learning Management Service
+> Error: [Errno -2] Name or service not known — DNS resolution failure during SELECT on item table
+> Pattern: Both errors are identical, suggesting the database hostname is unresolvable
+
+Agent removed the job after testing:
+
+> Done! The health check job (d044d20a) has been removed.
+
+## Task 4C — Bug fix and recovery
+
+**Root cause:** In `backend/app/routers/items.py`, the `get_items()` endpoint had a planted bug in its exception handler. When any database error occurred (like PostgreSQL being down), it caught ALL exceptions and raised `HTTP 404 Not Found` with a generic "Items not found" message. This masked the real error.
+
+**Fix:** Changed the exception handler to return `HTTP 500 Internal Server Error` with the actual error message:
+
+```diff
+- raise HTTPException(
+-     status_code=status.HTTP_404_NOT_FOUND,
+-     detail="Items not found",
++ raise HTTPException(
++     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
++     detail=str(exc),
+  ) from exc
+```
+
+**Post-fix failure check** (PostgreSQL stopped after redeploy):
+
+The API now returns `HTTP 500` with the real error: `{"detail":"[Errno -2] Name or service not known"}` instead of the misleading `HTTP 404 Items not found`.
+
+Agent "What went wrong?" response after fix:
+
+> 7 errors in the last 60 minutes, all from the Learning Management Service.
+> Most recent error: DNS resolution failure — [Errno -2] Name or service not known
+> Trace shows: connect span failed at 260.5ms with gaierror, GET /items/ returned with error at 274.3ms
+> Root cause: The database service is down or the hostname is unreachable.
+
+**Healthy follow-up** (PostgreSQL restarted):
+
+Backend returns `HTTP 200` with full item data. System is healthy.

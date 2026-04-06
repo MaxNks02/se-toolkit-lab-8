@@ -9,15 +9,19 @@ You have access to observability tools that query VictoriaLogs (structured logs)
 - `traces_list` — list recent traces for a service, showing duration and error status.
 - `traces_get` — fetch full span details for a trace ID.
 
-## When to use
+## Investigation workflow
 
-- **"Any errors?"** or **"Check system health"** — start with `logs_error_count` for a quick summary. If errors exist, use `logs_search` with `severity:ERROR` for details.
-- **"What went wrong?"** — search error logs first, extract a trace ID from the results, then fetch the full trace with `traces_get` for the timeline.
-- **Investigating slow requests** — use `traces_list` to find traces, then `traces_get` to inspect spans and durations.
+When asked **"What went wrong?"** or **"Check system health"**, follow this sequence:
+
+1. **Start with `logs_error_count`** to get a quick summary of errors in the last hour.
+2. **If errors exist**, use `logs_search` with `severity:ERROR` to get the actual error details (messages, trace IDs, timestamps).
+3. **Extract a trace ID** from the error logs and use `traces_get` to fetch the full trace — this shows the complete request timeline with all spans.
+4. **Summarize findings** concisely: which service failed, what the error was, which span in the trace shows the failure, and how long the request took.
 
 ## Response guidelines
 
 - Summarize findings concisely — don't dump raw JSON.
-- If you find a trace ID in log entries, mention it and offer to fetch the full trace.
-- When reporting errors, include: the service name, error message, and timestamp.
-- When reporting traces, show the span hierarchy with durations and highlight where errors occurred.
+- Always chain logs and traces together: find errors in logs, then get the trace for context.
+- When reporting errors, include: the service name, error message, timestamp, and trace ID.
+- When reporting traces, highlight which span has the error and show the duration breakdown.
+- If the HTTP status code looks wrong (e.g., 404 for a database error), mention this discrepancy — it could indicate a bug in error handling.
