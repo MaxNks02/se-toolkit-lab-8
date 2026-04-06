@@ -96,63 +96,58 @@ Agent: There are 8 labs:
 7. Lab 07 — Build a Client with an AI Coding Agent
 8. Lab 08 — lab-08
 
+
 ## Task 3A — Structured logging
 
-Happy-path log excerpt (request_started -> request_completed with status 200):
+Happy-path structured log entries (request_started -> auth_success -> db_query -> request_completed, status 200):
 
-```
-2026-04-06 14:40:18,801 INFO [app.main] [trace_id=bb3a48d8bb27555f136680765b977f90] - request_started
-2026-04-06 14:40:18,802 INFO [app.auth] [trace_id=bb3a48d8bb27555f136680765b977f90] - auth_success
-2026-04-06 14:40:18,802 INFO [app.db.items] [trace_id=bb3a48d8bb27555f136680765b977f90] - db_query
-2026-04-06 14:40:19,231 INFO [app.main] [trace_id=bb3a48d8bb27555f136680765b977f90] - request_completed
-INFO: "GET /items/ HTTP/1.1" 200 OK
-```
-
-Error-path log excerpt (db_query with error, PostgreSQL stopped):
-
-```
-2026-04-06 14:40:51,234 INFO [app.main] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - request_started
-2026-04-06 14:40:51,235 INFO [app.auth] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - auth_success
-2026-04-06 14:40:51,235 INFO [app.db.items] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - db_query
-2026-04-06 14:40:51,256 ERROR [app.db.items] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - db_query
-2026-04-06 14:40:51,256 INFO [app.main] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - request_completed
-INFO: "GET /items/ HTTP/1.1" 404 Not Found
+```json
+{"severity":"INFO","event":"request_started","service.name":"Learning Management Service","trace_id":"bb3a48d8bb27555f136680765b977f90","method":"GET","path":"/items/","_time":"2026-04-06T14:40:18.801213696Z"}
+{"severity":"INFO","event":"auth_success","service.name":"Learning Management Service","trace_id":"bb3a48d8bb27555f136680765b977f90","_time":"2026-04-06T14:40:18.802002432Z"}
+{"severity":"INFO","event":"db_query","service.name":"Learning Management Service","trace_id":"bb3a48d8bb27555f136680765b977f90","operation":"select","table":"item","_time":"2026-04-06T14:40:18.802501888Z"}
+{"severity":"INFO","event":"request_completed","service.name":"Learning Management Service","trace_id":"bb3a48d8bb27555f136680765b977f90","status":"200","duration_ms":"430","method":"GET","path":"/items/","_time":"2026-04-06T14:40:19.231881728Z"}
 ```
 
-VictoriaLogs query (severity:ERROR):
+Error-path structured log entries (PostgreSQL stopped, db_query ERROR, status 404):
 
+```json
+{"severity":"INFO","event":"request_started","service.name":"Learning Management Service","trace_id":"1017b6ed5c60c438bc04fe293e39ec93","method":"GET","path":"/items/","_time":"2026-04-06T14:40:51.234120192Z"}
+{"severity":"INFO","event":"auth_success","service.name":"Learning Management Service","trace_id":"1017b6ed5c60c438bc04fe293e39ec93","_time":"2026-04-06T14:40:51.23501696Z"}
+{"severity":"INFO","event":"db_query","service.name":"Learning Management Service","trace_id":"1017b6ed5c60c438bc04fe293e39ec93","operation":"select","table":"item","_time":"2026-04-06T14:40:51.235418112Z"}
+{"severity":"ERROR","event":"db_query","service.name":"Learning Management Service","trace_id":"1017b6ed5c60c438bc04fe293e39ec93","operation":"select","table":"item","error":"(sqlalchemy.dialects.postgresql.asyncpg.InterfaceError) <class 'asyncpg.exceptions._base.InterfaceError'>: connection is closed","_time":"2026-04-06T14:40:51.2561536Z"}
+{"severity":"INFO","event":"request_completed","service.name":"Learning Management Service","trace_id":"1017b6ed5c60c438bc04fe293e39ec93","status":"404","duration_ms":"22","method":"GET","path":"/items/","_time":"2026-04-06T14:40:51.25673344Z"}
 ```
-2026-04-06T14:40:51Z [ERROR] db_query trace_id=1017b6ed5c60c438bc04fe293e39ec93
-  error: asyncpg.InterfaceError: connection is closed
-  SQL: SELECT item.id, item.type, ... FROM item
+
+VictoriaLogs query `severity:ERROR` result:
+
+```json
+{"severity":"ERROR","event":"db_query","service.name":"Learning Management Service","trace_id":"1017b6ed5c60c438bc04fe293e39ec93","error":"(sqlalchemy.dialects.postgresql.asyncpg.InterfaceError) <class 'asyncpg.exceptions._base.InterfaceError'>: connection is closed\n[SQL: SELECT item.id, item.type, item.parent_id, item.title, item.description, item.attributes, item.created_at \nFROM item]"}
 ```
 
 ## Task 3B — Traces
 
-Healthy trace (bb3a48d8bb27555f136680765b977f90):
+Healthy trace `bb3a48d8bb27555f136680765b977f90` — all spans OK:
 
-```
-TraceID: bb3a48d8bb27555f136680765b977f90 [HEALTHY], Spans: 8
-  SELECT db-lab-8                          419.6ms [OK]
-  GET /items/ http send                    0.1ms [OK]
-  connect                                  0.1ms [OK]
-  GET /items/                              433.7ms [OK]
-  BEGIN;                                   129.0ms [OK]
-  ROLLBACK;                                2.8ms [OK]
-```
-
-Error trace (1017b6ed5c60c438bc04fe293e39ec93):
-
-```
-TraceID: 1017b6ed5c60c438bc04fe293e39ec93 [ERROR], Spans: 6
-  SELECT db-lab-8                          19.2ms [ERROR]
-    -> otel.status_description: asyncpg.InterfaceError: connection is closed
-  GET /items/ http send                    0.0ms [OK]
-  connect                                  0.1ms [OK]
-  GET /items/                              23.8ms [OK]
+```json
+[
+  {"spanID":"bc6167763d894853","operation":"GET /items/","duration_us":433656,"error":"false","status":""},
+  {"spanID":"0da9bed99d0dd91d","operation":"SELECT db-lab-8","duration_us":419561,"error":"false","status":""},
+  {"spanID":"c3136e1f54fdfe59","operation":"connect","duration_us":137,"error":"false","status":""},
+  {"spanID":"43e6836af94efebb","operation":"GET /items/ http send","duration_us":80,"error":"false","status":""}
+]
 ```
 
-The error trace shows the failure in the SELECT span (db query), where the PostgreSQL connection was closed.
+Error trace `1017b6ed5c60c438bc04fe293e39ec93` — SELECT span has error:
+
+```json
+[
+  {"spanID":"e46d963a5df0be07","operation":"GET /items/","duration_us":23817,"error":"false","status":""},
+  {"spanID":"f75ad347b0518bdd","operation":"SELECT db-lab-8","duration_us":19246,"error":"true","status":"<class 'asyncpg.exceptions._base.InterfaceError'>: connection is closed"},
+  {"spanID":"c2f839290b0fb7d5","operation":"connect","duration_us":86,"error":"false","status":""}
+]
+```
+
+The error trace shows the failure in the `SELECT db-lab-8` span where the PostgreSQL connection was closed. The root span `GET /items/` completed in only 23.8ms (vs 433.7ms for the healthy request) because it failed fast.
 
 ## Task 3C — Observability MCP tools
 
@@ -164,10 +159,9 @@ Agent response under normal conditions ("Any errors in the last hour?"):
 > **Time:** ~14:40 UTC
 > **Error:** asyncpg.InterfaceError: connection is closed
 >
-> It occurred during a SELECT query on the item table -- the PostgreSQL connection
-> was closed unexpectedly. This looks like a transient database connection issue.
+> It occurred during a SELECT query on the item table -- the PostgreSQL connection was closed unexpectedly. This looks like a transient database connection issue.
 
-Agent response under failure conditions (PostgreSQL stopped, "Any errors in the last hour?"):
+Agent response under failure conditions (PostgreSQL stopped, fresh errors triggered, "Any errors in the last hour?"):
 
 > Yes, there are 3 errors in the last hour, all from the Learning Management Service:
 >
@@ -177,3 +171,4 @@ Agent response under failure conditions (PostgreSQL stopped, "Any errors in the 
 > | ~14:40 | asyncpg.InterfaceError: connection is closed -- Database connection dropped        |
 >
 > All errors are related to database connectivity on the item table.
+> Would you like me to investigate any of these traces further?
