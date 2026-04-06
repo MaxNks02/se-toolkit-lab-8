@@ -95,3 +95,85 @@ Agent: There are 8 labs:
 6. Lab 06 — Build Your Own Agent
 7. Lab 07 — Build a Client with an AI Coding Agent
 8. Lab 08 — lab-08
+
+## Task 3A — Structured logging
+
+Happy-path log excerpt (request_started -> request_completed with status 200):
+
+```
+2026-04-06 14:40:18,801 INFO [app.main] [trace_id=bb3a48d8bb27555f136680765b977f90] - request_started
+2026-04-06 14:40:18,802 INFO [app.auth] [trace_id=bb3a48d8bb27555f136680765b977f90] - auth_success
+2026-04-06 14:40:18,802 INFO [app.db.items] [trace_id=bb3a48d8bb27555f136680765b977f90] - db_query
+2026-04-06 14:40:19,231 INFO [app.main] [trace_id=bb3a48d8bb27555f136680765b977f90] - request_completed
+INFO: "GET /items/ HTTP/1.1" 200 OK
+```
+
+Error-path log excerpt (db_query with error, PostgreSQL stopped):
+
+```
+2026-04-06 14:40:51,234 INFO [app.main] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - request_started
+2026-04-06 14:40:51,235 INFO [app.auth] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - auth_success
+2026-04-06 14:40:51,235 INFO [app.db.items] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - db_query
+2026-04-06 14:40:51,256 ERROR [app.db.items] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - db_query
+2026-04-06 14:40:51,256 INFO [app.main] [trace_id=1017b6ed5c60c438bc04fe293e39ec93] - request_completed
+INFO: "GET /items/ HTTP/1.1" 404 Not Found
+```
+
+VictoriaLogs query (severity:ERROR):
+
+```
+2026-04-06T14:40:51Z [ERROR] db_query trace_id=1017b6ed5c60c438bc04fe293e39ec93
+  error: asyncpg.InterfaceError: connection is closed
+  SQL: SELECT item.id, item.type, ... FROM item
+```
+
+## Task 3B — Traces
+
+Healthy trace (bb3a48d8bb27555f136680765b977f90):
+
+```
+TraceID: bb3a48d8bb27555f136680765b977f90 [HEALTHY], Spans: 8
+  SELECT db-lab-8                          419.6ms [OK]
+  GET /items/ http send                    0.1ms [OK]
+  connect                                  0.1ms [OK]
+  GET /items/                              433.7ms [OK]
+  BEGIN;                                   129.0ms [OK]
+  ROLLBACK;                                2.8ms [OK]
+```
+
+Error trace (1017b6ed5c60c438bc04fe293e39ec93):
+
+```
+TraceID: 1017b6ed5c60c438bc04fe293e39ec93 [ERROR], Spans: 6
+  SELECT db-lab-8                          19.2ms [ERROR]
+    -> otel.status_description: asyncpg.InterfaceError: connection is closed
+  GET /items/ http send                    0.0ms [OK]
+  connect                                  0.1ms [OK]
+  GET /items/                              23.8ms [OK]
+```
+
+The error trace shows the failure in the SELECT span (db query), where the PostgreSQL connection was closed.
+
+## Task 3C — Observability MCP tools
+
+Agent response under normal conditions ("Any errors in the last hour?"):
+
+> Yes, there was 1 error in the last hour:
+>
+> **Service:** Learning Management Service
+> **Time:** ~14:40 UTC
+> **Error:** asyncpg.InterfaceError: connection is closed
+>
+> It occurred during a SELECT query on the item table -- the PostgreSQL connection
+> was closed unexpectedly. This looks like a transient database connection issue.
+
+Agent response under failure conditions (PostgreSQL stopped, "Any errors in the last hour?"):
+
+> Yes, there are 3 errors in the last hour, all from the Learning Management Service:
+>
+> | Time   | Error                                                                             |
+> |--------|-----------------------------------------------------------------------------------|
+> | ~15:00 | [Errno -2] Name or service not known -- DNS resolution failure (2 occurrences)    |
+> | ~14:40 | asyncpg.InterfaceError: connection is closed -- Database connection dropped        |
+>
+> All errors are related to database connectivity on the item table.
