@@ -42,10 +42,15 @@ lms_env = lms.setdefault("env", {})
 lms_env["NANOBOT_LMS_BACKEND_URL"] = os.environ.get("NANOBOT_LMS_BACKEND_URL", "")
 lms_env["NANOBOT_LMS_API_KEY"] = os.environ.get("NANOBOT_LMS_API_KEY", "")
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 lms_env["VICTORIALOGS_URL"] = os.environ.get("VICTORIALOGS_URL", "http://victorialogs:9428")
 lms_env["VICTORIATRACES_URL"] = os.environ.get("VICTORIATRACES_URL", "http://victoriatraces:10428")
 >>>>>>> 496ec277
+=======
+lms_env["VICTORIALOGS_URL"] = os.environ.get("VICTORIALOGS_URL", "http://victorialogs:9428")
+lms_env["VICTORIATRACES_URL"] = os.environ.get("VICTORIATRACES_URL", "http://victoriatraces:10428")
+>>>>>>> 93ccdff8
 
 with open(resolved_path, "w") as f:
     json.dump(config, f, indent=2)
