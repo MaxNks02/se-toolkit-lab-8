@@ -1,0 +1,36 @@
+{
+  "providers": {
+    "custom": {
+      "api_key": "placeholder",
+      "api_base": "placeholder"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "coder-model",
+      "provider": "custom"
+    }
+  },
+  "channels": {
+    "webchat": {
+      "enabled": true,
+      "allow_from": ["*"]
+    }
+  },
+  "gateway": {
+    "host": "0.0.0.0",
+    "port": 18790
+  },
+  "tools": {
+    "mcp_servers": {
+      "lms": {
+        "command": "python",
+        "args": ["-m", "mcp_lms"],
+        "env": {
+          "NANOBOT_LMS_BACKEND_URL": "placeholder",
+          "NANOBOT_LMS_API_KEY": "placeholder"
+        }
+      }
+    }
+  }
+}
